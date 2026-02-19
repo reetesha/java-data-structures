@@ -7,7 +7,8 @@ public class MyArrayList<T> implements Iterable<T>{
     private int capacity;
     private T[] elements;
     private int size=0;
-    int modCount;
+    private volatile int modCount;
+    private final Object lock= new Object();
 
     @SuppressWarnings("unchecked")
     public MyArrayList(int capacity){
@@ -22,29 +23,37 @@ public class MyArrayList<T> implements Iterable<T>{
     }
 
     public void add(T val){
-        if(size==capacity){
-            resize();
+        synchronized (lock){
+            if(size==capacity){
+                resize();
+            }
+            elements[size++]=val;
+            modCount++;
         }
-        elements[size++]=val;
-        modCount++;
     }
 
     public T get(int i){
-        if(i<0 || i>=size){
-            throw new IndexOutOfBoundsException();
+        synchronized (lock){
+            if(i<0 || i>=size){
+                throw new IndexOutOfBoundsException();
+            }
+            return elements[i];
         }
-        return elements[i];
     }
 
     public void set(int i, T val){
-        if(i<0 || i>=size){
-            throw new IndexOutOfBoundsException();
+        synchronized (lock){
+            if(i<0 || i>=size){
+                throw new IndexOutOfBoundsException();
+            }
+            elements[i]=val;
         }
-        elements[i]=val;
     }
 
     public int size(){
-        return size;
+        synchronized (lock){
+            return size;
+        }
     }
 
     @SuppressWarnings("unchecked")
@@ -56,30 +65,34 @@ public class MyArrayList<T> implements Iterable<T>{
     }
 
     public void remove(int index){
-        if(index<0|| index>=size){
-            throw new IndexOutOfBoundsException();
-        }
-        for(int i=index;i<size-1;i++){
-            elements[i] = elements[i+1];
-        }
+        synchronized (lock){
+            if(index<0|| index>=size){
+                throw new IndexOutOfBoundsException();
+            }
+            for(int i=index;i<size-1;i++){
+                elements[i] = elements[i+1];
+            }
 
-        elements[--size]=null;//help GC
-        modCount++;
+            elements[--size]=null;//help GC
+            modCount++;
+        }
     }
 
     public void insert(int index, T val){
-        if(index<0 || index>size){
-            throw new IndexOutOfBoundsException();
+        synchronized (lock){
+            if(index<0 || index>size){
+                throw new IndexOutOfBoundsException();
+            }
+            if(size==capacity){
+                resize();
+            }
+            for(int i=size;i>index;i--){
+                elements[i] = elements[i-1];
+            }
+            elements[index]=val;
+            size++;
+            modCount++;
         }
-        if(size==capacity){
-            resize();
-        }
-        for(int i=size;i>index;i--){
-            elements[i] = elements[i-1];
-        }
-        elements[index]=val;
-        size++;
-        modCount++;
     }
 
     public boolean isEmpty(){
@@ -99,8 +112,11 @@ public class MyArrayList<T> implements Iterable<T>{
 
     @Override
     public Iterator<T> iterator() {
-        return new MyIterator();
+        synchronized (lock){
+            return new MyIterator();
+        }
     }
+
     private class MyIterator implements Iterator<T>{
         private int cursor=0;
         private int expectedModCount=modCount;
@@ -114,12 +130,14 @@ public class MyArrayList<T> implements Iterable<T>{
 
         @Override
         public T next() {
-            checkForModification();
-            if(!hasNext()){
-                throw new NoSuchElementException();
+            synchronized (lock){
+                checkForModification();
+                if(!hasNext()){
+                    throw new NoSuchElementException();
+                }
+                lastReturedIndex=cursor;
+                return elements[cursor++];
             }
-            lastReturedIndex=cursor;
-            return elements[cursor++];
         }
 
         private void checkForModification(){
@@ -165,3 +183,51 @@ public class MyArrayList<T> implements Iterable<T>{
 
     }
 }
+
+/*
+Official Java Docs Say: Fail-fast behavior cannot be guaranteed and should be used only to detect bugs.
+Very important line.
+
+How CopyOnWriteArrayList Solves It: Core Idea. When you modify the list:
+👉 It creates a NEW copy of the underlying array
+👉 Modifies the new copy
+👉 Replaces the reference
+Old array remains untouched.
+Example -- Thread A:
+Iterator it = list.iterator();  At this moment, iterator holds reference to:
+Array A
+
+Thread B:
+list.add(5);
+Internally:
+New Array B created Elements copied 5 added
+Reference updated
+Thread A is still iterating over:
+Array A (unchanged)
+So:
+No ConcurrentModificationException
+No corruption
+No need for modCount
+Completely safe iteration
+🔥 Why It Is Thread-Safe
+Because: Array reference is volatile. Writes are synchronized internally. Readers see immutable snapshot
+No shared mutation.
+🔥 When To Use CopyOnWriteArrayList
+Use when:
+Many reads
+Very few writes
+Example: listeners list, configuration list
+Never use when:
+Frequent writes
+Large collections
+🎯 Simple Mental Model
+Fail-fast:
+"If you touch it while I iterate, I crash."
+CopyOnWrite:
+"You modify your copy. I keep reading mine."
+🔥 Interview Gold Line
+Fail-fast is:
+A debugging mechanism, not a concurrency control mechanism.
+CopyOnWrite is:
+A snapshot-based concurrency strategy.
+ */
