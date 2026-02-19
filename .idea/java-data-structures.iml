@@ -6,6 +6,7 @@
       <sourceFolder url="file://$MODULE_DIR$/src/test" isTestSource="true" />
       <sourceFolder url="file://$MODULE_DIR$/src/main/java/com" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/src/main/java/com/ds" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/src/main/java/com/ds/linkedlist" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/src/main/java/com/ds/list" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/src/test/java/com" isTestSource="true" />
       <sourceFolder url="file://$MODULE_DIR$/src/test/java/com/ds" isTestSource="true" />
