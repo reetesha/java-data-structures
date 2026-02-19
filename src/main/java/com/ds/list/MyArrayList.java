@@ -96,18 +96,22 @@ public class MyArrayList<T> implements Iterable<T>{
     }
 
     public boolean isEmpty(){
-        return size==0;
+        synchronized (lock){
+            return size==0;
+        }
     }
 
     @Override
     public String toString(){
-        StringBuilder sb= new StringBuilder("[");
-        for(int i=0;i<size;i++){
-            sb.append(elements[i]);
-            if(i < size-1) sb.append(", ");
+        synchronized (lock){
+            StringBuilder sb= new StringBuilder("[");
+            for(int i=0;i<size;i++){
+                sb.append(elements[i]);
+                if(i < size-1) sb.append(", ");
+            }
+            sb.append("]");
+            return sb.toString();
         }
-        sb.append("]");
-        return sb.toString();
     }
 
     @Override
@@ -120,22 +124,30 @@ public class MyArrayList<T> implements Iterable<T>{
     private class MyIterator implements Iterator<T>{
         private int cursor=0;
         private int expectedModCount=modCount;
-        int lastReturedIndex=-1;
+        int lastReturnedIndex =-1;
 
+        MyIterator(){
+            synchronized (lock){
+                expectedModCount=modCount;
+            }
+
+        }
         @Override
         public boolean hasNext() {
-            checkForModification();
-            return cursor<size;
+            synchronized (lock){
+                checkForModification();
+                return cursor<size;
+            }
         }
 
         @Override
         public T next() {
             synchronized (lock){
                 checkForModification();
-                if(!hasNext()){
+                if(cursor>=size){
                     throw new NoSuchElementException();
                 }
-                lastReturedIndex=cursor;
+                lastReturnedIndex =cursor;
                 return elements[cursor++];
             }
         }
@@ -147,14 +159,16 @@ public class MyArrayList<T> implements Iterable<T>{
         }
         @SuppressWarnings("UnCheckedf")
         public void remove(){
-            checkForModification();
-            if(lastReturedIndex < 0){
-                throw new IllegalStateException();
+            synchronized (lock){
+                checkForModification();
+                if(lastReturnedIndex < 0){
+                    throw new IllegalStateException();
+                }
+                MyArrayList.this.remove(lastReturnedIndex);
+                cursor= lastReturnedIndex;//adjust cursor
+                lastReturnedIndex = -1;
+                expectedModCount=modCount;
             }
-            MyArrayList.this.remove(lastReturedIndex);
-            cursor= lastReturedIndex;//adjust cursor
-            lastReturedIndex= -1;
-            expectedModCount=modCount;
         }
 
     }
