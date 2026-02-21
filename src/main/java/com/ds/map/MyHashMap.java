@@ -1,56 +1,101 @@
 package map;
 
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
-import java.util.Map;
 
-public class MyHashMap {
-    LinkedList<Entry>[] map;
+public class MyHashMap<K,V> {
+    private LinkedList<Entry<K, V>>[] buckets;
+    private int size;
+    private static final double LOAD_FACTOR=0.75;
 
-    MyHashMap(int capacity){
-        this.map= new LinkedList[capacity];
+    @SuppressWarnings("unchecked")
+    public MyHashMap(int capacity){
+        if(capacity<=0){
+            throw new IllegalArgumentException("Capacity must be <0");
+        }
+        this.buckets = new LinkedList[capacity];
     }
 
-    public void put(int key, int val){
-        int bucket=Math.abs(key)%map.length;
-        if(map[bucket]==null){
-            map[bucket]= new LinkedList<>();
+    public MyHashMap(){
+        this(16);
+    }
+
+    private int getBucketIndex(K key){
+        if(key==null) return 0;
+        return (key.hashCode() & 0x7fffffff)% buckets.length;
+    }
+
+    public void put(K key, V val){
+        int index=getBucketIndex(key);
+        if(buckets[index]==null){
+            buckets[index]= new LinkedList<>();
         }
-        for(Entry entry:map[bucket]){
-                if(entry.key==key){
+        for(Entry<K,V> entry: buckets[index]){
+                if(entry.key==null ? key==null : entry.key.equals(key)){
                     entry.val=val;
                     return;
                 }
         }
-        map[bucket].add(new Entry(key, val));
+        //insert new
+        buckets[index].add(new Entry<>(key, val));
+        size++;
+        //check for resize
+        if(size>buckets.length*LOAD_FACTOR){
+            resize();
+        }
+
     }
-    public int get(int key){
-        int bucket=Math.abs(key)%map.length;
-        if(map[bucket]==null) return -1;
-        for(Entry entry:map[bucket]){
-            if(key==entry.key){
+    public V get(K key){
+        int index=getBucketIndex(key);
+        if(buckets[index]==null) return null;
+        for(Entry<K,V>  entry: buckets[index]){
+            if(entry.key==null ? key==null : entry.key.equals(key)){
                 return entry.val;
             }
         }
-        return -1;
+        return null;
     }
-    public void remove(int key){
-        int bucket=Math.abs(key)%map.length;
-        if(map[bucket]==null) return;
-        Iterator<Entry> it= map[bucket].iterator();
+    public void remove(K key){
+        int index=getBucketIndex(key);
+        if(buckets[index]==null) return;
+        Iterator<Entry<K,V>> it= buckets[index].iterator();
         while(it.hasNext()){
-            if(key==it.next().key){
+            Entry<K,V> entry = it.next();
+            if(entry.key ==null ? key==null : entry.key.equals(key)){
                 it.remove();
+                size--;
                 return;
             }
         }
     }
-}
-class Entry{
-    int key, val;
-    public Entry(int key, int val){
-        this.key=key;
-        this.val=val;
+
+    public int size(){
+        return size;
+    }
+
+    @SuppressWarnings("unchecked")
+    private void resize(){
+        LinkedList<Entry<K,V>>[] oldBuckets= buckets;
+        buckets= new LinkedList[oldBuckets.length*2];
+        size=0;//Important : re-add everything
+
+        for(LinkedList<Entry<K,V>> bucket:oldBuckets){
+            if(bucket!=null){
+                for(Entry<K,V> entry:bucket){
+                    put(entry.key, entry.val);//rehash
+                }
+            }
+        }
+
+    }
+
+    /* Entry Class as private static for Better encapsulation.Cleaner design.More professional.*/
+    private static class Entry<K,V>{
+        K key;
+        V val;
+        public Entry(K key, V val){
+            this.key=key;
+            this.val=val;
+        }
     }
 }
