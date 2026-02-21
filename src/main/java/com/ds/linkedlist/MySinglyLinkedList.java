@@ -82,8 +82,40 @@ Because we need previous node to update its next to null, and singly list doesnâ
         return sb.toString();
 
     }
-    void revers(){
+    /*Node revers(Node head){
+        if(head==null || head.next==null) {
+            return head;
+        }
+        Node chota= revers(head.next);
 
+        head.next.next=head;
+        head.next=null;
+        return chota;
+    }*/
+
+     Node revers(){
+        Node prev=null, curr=head;
+        while(curr!=null){
+            Node temp=curr.next;
+            curr.next=prev;
+            prev=curr;
+            curr=temp;
+        }
+        return prev;
+    }
+
+    public static void main(String args[]){
+        MySinglyLinkedList<Integer> linkedList= new MySinglyLinkedList();
+        linkedList.addFirst(1);
+        linkedList.addFirst(2);
+        linkedList.addFirst(3);
+        //linkedList.addFirst(4);
+        //linkedList.addFirst(5);
+
+        //Revers Linked List
+        //Node reversNode= linkedList.revers(linkedList.head);
+        Node reversNode= linkedList.revers();
+        System.out.println(linkedList.head);
     }
 }
 
